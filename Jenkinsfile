@@ -57,8 +57,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'awoke/student-management-app'  
-        DOCKER_TAG   = "${env.BUILD_NUMBER}"          
+        DOCKER_IMAGE = 'awoke/student-management-app'
+        DOCKER_TAG   = "${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -80,21 +80,20 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
+                        def image = docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()          // pushes the :BUILD_NUMBER tag
+                        image.push('latest')  // also tags & pushes :latest
                     }
                 }
             }
         }
-
-        // If you later want to add other deployment targets (Render, Fly.io, Railway, 
-        // Heroku, AWS ECS, etc.) you can add new stages here
     }
 
     post {
         always {
-            // Optional: clean up docker images to save space
             sh 'docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true'
+            // Optional: also clean :latest if you want aggressive cleanup
+            // sh 'docker rmi ${DOCKER_IMAGE}:latest || true'
         }
     }
 }
