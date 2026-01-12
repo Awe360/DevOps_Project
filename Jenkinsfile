@@ -33,30 +33,34 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            when {
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
-            }
-            steps {
-                withKubeConfig([credentialsId: 'kubeconfig']) {
-                    script {
-                        def yamlContent = readFile 'deployment.yaml'
-                        def updatedContent = yamlContent.replaceAll('image: .*', "image: ${DOCKER_IMAGE}:${DOCKER_TAG}")
-                        writeFile file: 'deployment.yaml', text: updatedContent
+     stage('Deploy to Kubernetes') {
+    when {
+        expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+    }
+    steps {
+        withKubeConfig([credentialsId: 'kubeconfig']) {
+            script {
+                // Image tag update (this part already works perfectly)
+                def yamlContent = readFile 'deployment.yaml'
+                def updatedContent = yamlContent.replaceAll('image: .*', "image: ${DOCKER_IMAGE}:${DOCKER_TAG}")
+                writeFile file: 'deployment.yaml', text: updatedContent
+                
+                echo "Updated deployment.yaml image to: ${DOCKER_IMAGE}:${DOCKER_TAG}"
 
-                        echo "Updated image to: ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                        echo updatedContent.readLines().findAll { it.contains('image:') }.join('\n')
-
-                        bat 'kubectl apply -f deployment.yaml'
-                        bat 'kubectl apply -f service.yaml'
-
-                        bat "kubectl rollout status deployment/student-management --timeout=120s"
-                        bat 'kubectl get pods -l app=student-management -o wide'
-                        bat 'kubectl get svc student-management-service'
-                    }
-                }
+                // Use FULL PATH to kubectl (from Docker Desktop)
+                def kubectlPath = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\kubectl.exe'
+                
+                bat "${kubectlPath} apply -f deployment.yaml"
+                bat "${kubectlPath} apply -f service.yaml"
+                
+                // Wait for rollout + show status
+                bat "${kubectlPath} rollout status deployment/student-management --timeout=120s"
+                bat "${kubectlPath} get pods -l app=student-management -o wide"
+                bat "${kubectlPath} get svc student-management-service"
             }
         }
+    }
+}
     }
 
     post {
