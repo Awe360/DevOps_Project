@@ -81,8 +81,8 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
                         def image = docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                        image.push()          // pushes the :BUILD_NUMBER tag
-                        image.push('latest')  // also tags & pushes :latest
+                        image.push()          // pushes :2 (or whatever BUILD_NUMBER)
+                        image.push('latest')  // also pushes :latest
                     }
                 }
             }
@@ -91,9 +91,15 @@ pipeline {
 
     post {
         always {
-            sh 'docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true'
-            // Optional: also clean :latest if you want aggressive cleanup
-            // sh 'docker rmi ${DOCKER_IMAGE}:latest || true'
+            script {
+                if (isUnix()) {
+                    sh 'docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true'
+                } else {
+                    bat 'docker rmi %DOCKER_IMAGE%:%DOCKER_TAG% || exit /b 0'
+                }
+            }
+            // Optional: clean workspace to save disk space
+            cleanWs()
         }
     }
 }
