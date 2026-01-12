@@ -35,31 +35,34 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            when {
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
-            }
-            steps {
-                withKubeConfig([credentialsId: 'kubeconfig']) {   // ← your credential ID here!
-                    script {
-                        // Optional: If you want versioned deploys (recommended for rollback)
-                        // Update image in deployment.yaml
-                        bat "sed -i \"s|image: .*|image: ${DOCKER_IMAGE}:${DOCKER_TAG}|g\" deployment.yaml"
+       stage('Deploy to Kubernetes') {
+    when {
+        expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+    }
+    steps {
+        withKubeConfig([credentialsId: 'kubeconfig']) {
+            script {
+                // Update image tag using PowerShell (Windows-safe)
+                bat """
+powershell -Command "(Get-Content deployment.yaml) -replace 'image: .*', 'image: ${DOCKER_IMAGE}:${DOCKER_TAG}' | Set-Content deployment.yaml"
+                """
 
-                        // Or for always :latest
-                        // bat "sed -i \"s|image: .*|image: ${DOCKER_IMAGE}:latest|g\" deployment.yaml"
+                // Optional: If you prefer always :latest (uncomment and comment above)
+                // bat """
+                // powershell -Command "(Get-Content deployment.yaml) -replace 'image: .*', 'image: ${DOCKER_IMAGE}:latest' | Set-Content deployment.yaml"
+                // """
 
-                        // Apply manifests (assumes files are in repo root)
-                        bat 'kubectl apply -f deployment.yaml'
-                        bat 'kubectl apply -f service.yaml'
+                // Apply manifests
+                bat 'kubectl apply -f deployment.yaml'
+                bat 'kubectl apply -f service.yaml'
 
-                        // Optional: Wait for rollout + basic verification
-                        bat "kubectl rollout status deployment/student-management --timeout=120s"
-                        bat 'kubectl get pods -l app=student-management'
-                    }
-                }
+                // Wait for rollout and verify (good practice)
+                bat "kubectl rollout status deployment/student-management --timeout=120s"
+                bat 'kubectl get pods -l app=student-management'
             }
         }
+    }
+}
     }
 
     post {
