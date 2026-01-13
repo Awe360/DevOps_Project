@@ -4,7 +4,6 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'awoke/student-management-app'
         DOCKER_TAG   = "${BUILD_NUMBER}"
-        KUBECONFIG_CRED = 'kubeconfig'
     }
 
     stages {
@@ -37,14 +36,17 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh '''
-                      echo "Updating deployment image tag"
-                      sed -i "s|__TAG__|${DOCKER_TAG}|g" deployment.yaml
-
+                      echo "Using kubeconfig"
+                      kubectl version --client
+                      
                       kubectl apply -f deployment.yaml
                       kubectl apply -f service.yaml
-
+                      
+                      kubectl set image deployment/student-management \
+                        app=awoke/student-management-app:${DOCKER_TAG}
+                      
                       kubectl rollout status deployment/student-management
                     '''
                 }
