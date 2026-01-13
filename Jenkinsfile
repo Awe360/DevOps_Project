@@ -47,14 +47,28 @@ pipeline {
             
             echo "Updated deployment.yaml image to: ${DOCKER_IMAGE}:${DOCKER_TAG}"
 
-            // Use minikube kubectl (installs kubectl inside minikube if needed)
-            bat "minikube kubectl -- apply -f deployment.yaml"
-            bat "minikube kubectl -- apply -f service.yaml"
-            
-            // Wait and show status (minikube kubectl handles connection)
-            bat "minikube kubectl -- rollout status deployment/student-management --timeout=120s"
-            bat "minikube kubectl -- get pods -l app=student-management -o wide"
-            bat "minikube kubectl -- get svc student-management-service"
+            // Ensure minikube is available, start if stopped, then apply manifests
+            bat """
+setlocal enableextensions enabledelayedexpansion
+
+where minikube >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+  echo Minikube binary not found on PATH. Install minikube and ensure PATH is set for the Jenkins agent.
+  exit /b 1
+)
+
+minikube status >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+  echo Minikube not running; attempting to start...
+  minikube start --driver=docker || exit /b 1
+)
+
+minikube kubectl -- apply -f deployment.yaml || exit /b 1
+minikube kubectl -- apply -f service.yaml || exit /b 1
+minikube kubectl -- rollout status deployment/student-management --timeout=120s || exit /b 1
+minikube kubectl -- get pods -l app=student-management -o wide
+minikube kubectl -- get svc student-management-service
+"""
         }
     }
 }

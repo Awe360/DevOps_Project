@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: app
-        image: awoke/student-management-app:latest
+        image: awoke/student-management-app:12
         ports:
         - containerPort: 3000
