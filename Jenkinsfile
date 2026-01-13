@@ -36,27 +36,27 @@ pipeline {
 
     stage('Deploy to Kubernetes') {
     steps {
-        // Debug 1: Confirm minikube & kubectl wrapper work
-        bat 'minikube status || echo "Minikube status failed!"'
-
-        bat 'minikube kubectl -- version --client || echo "minikube kubectl wrapper failed!"'
-
-        // Debug 2: List files in workspace (must see deployment.yaml & service.yaml)
+        // Debug basics
+        bat 'echo Workspace dir:'
         bat 'dir'
 
-        bat 'if exist deployment.yaml (echo deployment.yaml found) else (echo ERROR: deployment.yaml MISSING!)'
-        bat 'if exist service.yaml (echo service.yaml found) else (echo ERROR: service.yaml MISSING!)'
+        bat 'echo Checking for YAML files:'
+        bat 'if exist deployment.yaml (echo deployment.yaml FOUND) else (echo ERROR - deployment.yaml MISSING)'
+        bat 'if exist service.yaml (echo service.yaml FOUND) else (echo ERROR - service.yaml MISSING)'
 
-        // Debug 3: Try apply with verbose output
+        // Use FULL PATH to minikube
         bat '''
-            minikube kubectl -- apply -f deployment.yaml --dry-run=client -o yaml || echo "Dry-run on deployment failed!"
-            minikube kubectl -- apply -f deployment.yaml || echo "Apply deployment failed!"
-            minikube kubectl -- apply -f service.yaml || echo "Apply service failed!"
+            "C:\\Program Files\\Minikube\\minikube.exe" status || echo "Minikube status failed - check if running!"
+            "C:\\Program Files\\Minikube\\minikube.exe" kubectl -- version --client || echo "minikube kubectl wrapper failed!"
         '''
 
-        // Quick status check
-        bat 'minikube kubectl -- get pods || echo "get pods failed!"'
-        bat 'minikube kubectl -- get svc || echo "get svc failed!"'
+        // Apply with full path + error capture
+        bat '''
+            "C:\\Program Files\\Minikube\\minikube.exe" kubectl -- apply -f deployment.yaml || echo "DEPLOYMENT APPLY FAILED!"
+            "C:\\Program Files\\Minikube\\minikube.exe" kubectl -- apply -f service.yaml || echo "SERVICE APPLY FAILED!"
+        '''
+
+        bat '"C:\\Program Files\\Minikube\\minikube.exe" kubectl -- get pods || echo "get pods failed"'
     }
 }
     }
