@@ -46,17 +46,17 @@ pipeline {
 
         // Use FULL PATH to minikube
         bat '''
-            "C:\\Program Files\\Minikube\\minikube.exe" status || echo "Minikube status failed - check if running!"
-            "C:\\Program Files\\Minikube\\minikube.exe" kubectl -- version --client || echo "minikube kubectl wrapper failed!"
+            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" status || echo "Minikube status failed - check if running!"
+            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- version --client || echo "minikube kubectl wrapper failed!"
         '''
 
         // Apply with full path + error capture
         bat '''
-            "C:\\Program Files\\Minikube\\minikube.exe" kubectl -- apply -f deployment.yaml || echo "DEPLOYMENT APPLY FAILED!"
-            "C:\\Program Files\\Minikube\\minikube.exe" kubectl -- apply -f service.yaml || echo "SERVICE APPLY FAILED!"
+            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- apply -f deployment.yaml || echo "DEPLOYMENT APPLY FAILED!"
+            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- apply -f service.yaml || echo "SERVICE APPLY FAILED!"
         '''
 
-        bat '"C:\\Program Files\\Minikube\\minikube.exe" kubectl -- get pods || echo "get pods failed"'
+        bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- get pods || echo "get pods failed"'
     }
 }
     }
