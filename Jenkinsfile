@@ -40,10 +40,10 @@ pipeline {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG')]) {
                     sh '''
                       echo "Updating deployment image tag"
-                      sed -i "s|__TAG__|${DOCKER_TAG}|g" k8s/deployment.yaml
+                      sed -i "s|__TAG__|${DOCKER_TAG}|g" deployment.yaml
 
-                      kubectl apply -f k8s/deployment.yaml
-                      kubectl apply -f k8s/service.yaml
+                      kubectl apply -f deployment.yaml
+                      kubectl apply -f service.yaml
 
                       kubectl rollout status deployment/student-management
                     '''
