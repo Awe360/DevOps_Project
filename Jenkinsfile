@@ -3,11 +3,12 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'awoke/student-management-app'
-        DOCKER_TAG   = "${env.BUILD_NUMBER}"
-        // Use Minikube's kubectl wrapper – it handles config automatically
+        DOCKER_TAG   = "${BUILD_NUMBER}"
+        KUBECONFIG_CRED = 'kubeconfig'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -34,53 +35,20 @@ pipeline {
             }
         }
 
-        // ────────────────────────────────────────────────
-        //          NEW: Prepare Manifest with new tag
-        // ────────────────────────────────────────────────
-        stage('Update Kubernetes Manifest') {
+        stage('Deploy to Kubernetes') {
             steps {
-                powershell '''
-                    $image = "${env:DOCKER_IMAGE}:v${env:BUILD_NUMBER}"
-                    $file = "kubernetes/deployment.yaml"
-                    
-                    $content = Get-Content $file -Raw
-                    $content = $content -replace 'image:\\s+awoke/student-management-app:[^\\s]+', "image: $image"
-                    Set-Content $file $content
-                '''
-                // Optional: show what changed
-                bat 'type kubernetes\\deployment.yaml'
+                withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG')]) {
+                    sh '''
+                      echo "Updating deployment image tag"
+                      sed -i "s|__TAG__|${DOCKER_TAG}|g" k8s/deployment.yaml
+
+                      kubectl apply -f k8s/deployment.yaml
+                      kubectl apply -f k8s/service.yaml
+
+                      kubectl rollout status deployment/student-management
+                    '''
+                }
             }
-        }
-
-        // ────────────────────────────────────────────────
-        //          NEW: Deploy to Minikube
-        // ────────────────────────────────────────────────
-        stage('Deploy to Kubernetes (Minikube)') {
-            steps {
-                // Apply both files (deployment + service)
-                bat '''
-                    minikube kubectl -- apply -f kubernetes\\deployment.yaml
-                    minikube kubectl -- apply -f kubernetes\\service.yaml
-                '''
-
-                // Quick verification
-                bat '''
-                    minikube kubectl -- get pods
-                    minikube kubectl -- get svc
-                '''
-            }
-        }
-    }
-
-    post {
-        always {
-            echo 'Pipeline finished!'
-        }
-        success {
-            echo 'Deployment successful!'
-        }
-        failure {
-            echo 'Deployment failed - check logs'
         }
     }
 }
