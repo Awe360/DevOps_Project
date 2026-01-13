@@ -33,48 +33,28 @@ pipeline {
             }
         }
 
-   stage('Deploy to Kubernetes') {
+ stage('Deploy to Kubernetes') {
     when {
-        expression { currentBuild.currentResult == 'SUCCESS' }
+        expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
     }
     steps {
-        withKubeConfig([credentialsId: 'kubeconfig']) {
-            script {
-                def kubectl = isUnix() ? 'kubectl' : 'kubectl'
+        // No need for withKubeConfig – minikube handles auth
+        script {
+            // Update the image tag (your existing code works)
+            def yamlContent = readFile 'deployment.yaml'
+            def updatedContent = yamlContent.replaceAll('image: .*', "image: ${DOCKER_IMAGE}:${DOCKER_TAG}")
+            writeFile file: 'deployment.yaml', text: updatedContent
+            
+            echo "Updated deployment.yaml image to: ${DOCKER_IMAGE}:${DOCKER_TAG}"
 
-                // Apply manifests
-                if (isUnix()) {
-                    sh """
-                      ${kubectl} apply -f deployment.yaml -n student-management
-                      ${kubectl} apply -f service.yaml -n student-management
-                    """
-                } else {
-                    bat """
-                      ${kubectl} apply -f deployment.yaml -n student-management
-                      ${kubectl} apply -f service.yaml -n student-management
-                    """
-                }
-
-                // Update image safely
-                if (isUnix()) {
-                    sh """
-                      ${kubectl} set image deployment/student-management \
-                      student-management=${DOCKER_IMAGE}:${DOCKER_TAG} \
-                      -n student-management
-                    """
-                } else {
-                    bat """
-                      ${kubectl} set image deployment/student-management ^
-                      student-management=${DOCKER_IMAGE}:${DOCKER_TAG} ^
-                      -n student-management
-                    """
-                }
-
-                // Verify rollout
-                bat "${kubectl} rollout status deployment/student-management -n student-management --timeout=120s"
-                bat "${kubectl} get pods -n student-management"
-                bat "${kubectl} get svc -n student-management"
-            }
+            // Use minikube kubectl (installs kubectl inside minikube if needed)
+            bat "minikube kubectl -- apply -f deployment.yaml"
+            bat "minikube kubectl -- apply -f service.yaml"
+            
+            // Wait and show status (minikube kubectl handles connection)
+            bat "minikube kubectl -- rollout status deployment/student-management --timeout=120s"
+            bat "minikube kubectl -- get pods -l app=student-management -o wide"
+            bat "minikube kubectl -- get svc student-management-service"
         }
     }
 }
