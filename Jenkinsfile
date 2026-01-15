@@ -54,13 +54,18 @@ pipeline {
 
                 // Render deployment with the build tag
                 bat 'set TAGGED_DEPLOY=%WORKSPACE%\\deployment.rendered.yaml'
-                bat 'powershell -NoProfile -Command "(Get-Content deployment.yaml) -replace \'__TAG__\', \'%DOCKER_TAG%\' | Set-Content -Encoding ascii %TAGGED_DEPLOY%"'
+                bat 'powershell -NoProfile -Command "(Get-Content deployment.yaml) -replace \'__TAG__\', \'%DOCKER_TAG%\' | Set-Content -Encoding ascii $Env:TAGGED_DEPLOY"'
+                bat 'type %TAGGED_DEPLOY%'
 
                 // Ensure minikube context is reachable for the Jenkins service account
                 bat 'echo Using MINIKUBE_HOME=%MINIKUBE_HOME%'
                 bat 'if not exist "%MINIKUBE_HOME%" (echo ERROR: MINIKUBE_HOME does not exist & exit /b 1)'
+                bat 'if not exist "%KUBECONFIG%" (echo ERROR: KUBECONFIG not found at %KUBECONFIG% & exit /b 1)'
 
-                bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" status'
+                bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" status || "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" start --driver=docker'
+                bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" profile list'
+                bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- config current-context'
+                bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- get nodes'
                 bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- apply -f %TAGGED_DEPLOY%'
                 bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- apply -f service.yaml'
                 bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- get pods'
