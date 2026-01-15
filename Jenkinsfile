@@ -34,30 +34,26 @@ pipeline {
             }
         }
 
-    stage('Deploy to Kubernetes') {
-    steps {
-        // Debug basics
-        bat 'echo Workspace dir:'
-        bat 'dir'
-
-        bat 'echo Checking for YAML files:'
-        bat 'if exist deployment.yaml (echo deployment.yaml FOUND) else (echo ERROR - deployment.yaml MISSING)'
-        bat 'if exist service.yaml (echo service.yaml FOUND) else (echo ERROR - service.yaml MISSING)'
-
-        // Use FULL PATH to minikube
-        bat '''
-            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" status || echo "Minikube status failed - check if running!"
-            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- version --client || echo "minikube kubectl wrapper failed!"
-        '''
-
-        // Apply with full path + error capture
-        bat '''
-            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- apply -f deployment.yaml || echo "DEPLOYMENT APPLY FAILED!"
-            "C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- apply -f service.yaml || echo "SERVICE APPLY FAILED!"
-        '''
-
-        bat '"C:\\Program Files\\Kubernetes\\Minikube\\minikube.exe" kubectl -- get pods || echo "get pods failed"'
-    }
-}
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Replace the tag placeholder in deployment.yaml
+                    sh """
+                        sed -i 's|__TAG__|${DOCKER_TAG}|g' deployment.yaml
+                    """
+                    
+                    // Apply Kubernetes manifests
+                    sh """
+                        kubectl apply -f deployment.yaml
+                        kubectl apply -f service.yaml
+                    """
+                    
+                    // Wait for deployment to be ready
+                    sh """
+                        kubectl rollout status deployment/student-management --timeout=5m
+                    """
+                }
+            }
+        }
     }
 }
